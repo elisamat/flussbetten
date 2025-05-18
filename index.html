@@ -224,6 +224,29 @@
     padding: 0.5rem 0;
   }
 
+  @media (max-width: 768px) {
+    .container {
+      flex-direction: column;
+    }
+
+    .sidebar {
+      width: 100%;
+      padding: 1rem;
+      order: 2;
+    }
+
+    .content {
+      order: 1;
+      height: 60vh;
+    }
+
+    #content.reduced-width,
+    #content.full-width {
+      flex: 1 1 auto;
+      width: 100%;
+    }
+  }
+
 </style>
 
 </head>
