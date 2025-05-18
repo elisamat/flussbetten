@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Flussbetten Karte</title>
+
+  <!-- Open Sans einbinden -->
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans&display=swap" rel="stylesheet">
+
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+  
+  <style>
+  :root {
+    --bg-color: #3A3F09;
+    --text-color: #FFFFFF;
+    --btn-bg: var(--text-color);
+    --btn-text: var(--bg-color);
+  }
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html, body {
+    height: 100%;
+    font-family: 'Open Sans', sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+  }
+
+  .container {
+    position: relative;
+    display: flex;
+    width: 100%;
+    height: 100vh;
+  }
+
+  .header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 60px;
+    color: var(--text-color);
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    padding: 0 1rem;
+    z-index: 1000;
+    background-color: transparent;
+  }
+
+  .header button {
+    background-color: var(--btn-bg);
+    color: var(--btn-text);
+    border: none;
+    margin: 0.5rem 0;
+    padding: 0.5rem 1rem;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+
+  .sidebar {
+    display: none; /* ← anfangs versteckt */
+    width: 25%;
+    background-color: var(--bg-color);
+    padding: 2rem;
+    font-size: 0.85rem;
+    overflow-y: auto;
+    z-index: 1;
+    color: var(--text-color);
+    margin-bottom: 2rem;
+  }
+
+  .content {
+    height: 100%;
+    flex: 1;
+  }
+
+  #content.full-width {
+    flex: 1 1 100%;
+  }
+
+  #content.reduced-width {
+    flex: 0 0 75%;
+  }
+
+  .stars {
+    display: inline-block;
+    font-size: 1rem;
+    color: #FFD700; /* Gold */
+  }
+
+  .star-empty {
+    color: #ccc;
+  }
+
+  .star-rating {
+  display: flex;
+  gap: 0.3rem;
+  font-size: 1.5rem;
+  margin: 0.5rem 0 1rem;
+  cursor: pointer;
+  }
+
+  .star-rating span {
+    color: #ccc;
+    transition: color 0.2s;
+  }
+
+  .star-rating span.selected,
+  .star-rating span.hovered {
+    color: #FFD700;
+  }
+
+  #map {
+    width: 100%;
+    height: 100%;
+  }
+
+  .modal {
+    display: none;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    background-color: rgba(0, 0, 0, 0.6);
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+  }
+
+.modal-content {
+  background: var(--bg-color);
+  color: var(--text-color);
+  padding: 5.5rem 1.5rem 1.5rem 1.5rem; /* extra Platz oben */
+  border-radius: 8px;
+  width: 90%;
+  max-width: 400px;
+  position: relative;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+  .modal-content input {
+    width: 100%;
+    padding: 0.5rem;
+    margin-bottom: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+
+  .modal-content button {
+    width: auto;
+    padding: 0.5rem;
+    margin: 0.5rem 0;
+    background-color: var(--btn-bg);
+    color: var(--btn-text);
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+
+  .modal-content textarea {
+    width: 100%;
+    padding: 0.5rem;
+    margin-bottom: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    resize: vertical;
+  }
+
+  .review-button {
+    margin-top: 1.5rem;
+    width: auto;
+    padding: 0.5rem 1rem; 
+  }
+
+  .submitCommentBtn {
+    margin-top: 1.5rem;
+  }
+
+
+  .close-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+  }
+
+  .comment-box textarea {
+    width: 100%;
+    padding: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .comment-box input {
+    width: 100%;
+    padding: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .comment-box button {
+    width: 100%;
+    padding: 0.5rem;
+    background-color: var(--btn-bg);
+    color: var(--btn-text);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+  .comment-list p {
+    border-bottom: 1px solid #eee;
+    padding: 0.5rem 0;
+  }
+
+</style>
+
+</head>
+<body>
+
+<div class="container">
+
+  <div class="sidebar" id="sidebar">
+    <h2 id="locationName">Bitte Ort wählen</h2>
+    <p id="locationDescription">Beschreibung erscheint hier...</p>
+
+    <div id="commentSection" class="comment-box" >
+      <button class="review-button" onclick="openReviewModal()">Rezension schreiben</button>
+    </div>
+
+    <div id="averageRatingBox" style="margin-top: 2rem;">
+      <div id="averageStars" class="stars"></div>
+      <div id="reviewCount" style="font-size: 0.9rem;"></div>
+    </div>
+
+    <div id="commentsList" class="comment-list" >
+    </div>
+
+  </div>
+
+  <div class="content" id="content">
+    <div id="map"></div>
+  </div>
+</div>
+
+<!-- Modal für Rezension -->
+<div class="modal" id="reviewModal">
+  <div class="modal-content">
+    <button class="close-btn" onclick="closeReviewModal()">&times;</button>
+    <input type="text" id="profileName" placeholder="Name" />
+   
+    <label>Bewertung:</label>
+      <div id="starRating" class="star-rating">
+        <span data-value="1">★</span>
+        <span data-value="2">★</span>
+        <span data-value="3">★</span>
+        <span data-value="4">★</span>
+        <span data-value="5">★</span>
+      </div>
+    <input type="hidden" id="rating" />
+
+    <textarea id="commentText" rows="3" placeholder="Dein Kommentar..."></textarea>
+    <button id="submitCommentBtn">Kommentar senden</button>
+  </div>
+</div>
+
+
+<!-- Leaflet & Supabase -->
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+<script>
+  const supabaseUrl = 'https://btqgovumfdgufaaxolvg.supabase.co';
+  const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ0cWdvdnVtZmRndWZhYXhvbHZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxMjI3NzAsImV4cCI6MjA2MjY5ODc3MH0.uLmvCCU_dJp-0o_KblwGWeiOfFiCPLZ_DGLrZb8YZL4';
+  const client = supabase.createClient(supabaseUrl, supabaseKey);
+  const rating = document.getElementById('rating');
+  const commentText = document.getElementById('commentText');
+  const submitCommentBtn = document.getElementById('submitCommentBtn');
+  const locationName = document.getElementById('locationName');
+  const locationDescription = document.getElementById('locationDescription');
+  const commentSection = document.getElementById('commentSection');
+  const reviewModal = document.getElementById('reviewModal');  
+  const commentsList = document.getElementById('commentsList');
+  const averageStars = document.getElementById('averageStars');
+  const reviewCount = document.getElementById('reviewCount');
+
+  let selectedLocation = null;
+
+  function openReviewModal() {
+    reviewModal.style.display = 'flex';
+  }
+
+  function closeReviewModal() {
+    reviewModal.style.display = 'none';
+  }
+
+  submitCommentBtn.onclick = async () => {
+  if (!selectedLocation) return;
+
+  const profileName = document.getElementById('profileName').value;
+
+  const { error } = await client.from('comments').insert({
+    profile: profileName || 'Anonym',
+    location_id: selectedLocation.id,
+    rating: Number(rating.value),
+    text: commentText.value
+  });
+
+  if (error) alert(error.message);
+  else {
+    commentText.value = '';
+    loadComments(selectedLocation.id);
+  }
+};
+
+  async function loadComments(locationId) {
+  const { data, error } = await client.from('comments')
+    .select('text, rating, created_at, profile')
+    .eq('location_id', locationId)
+    .order('created_at', { ascending: false });
+
+
+
+  if (error) {
+    commentsList.innerHTML = "<p>Fehler beim Laden.</p>";
+    averageStars.innerHTML = "";
+    reviewCount.textContent = "";
+    return;
+  }
+
+  // Durchschnitt berechnen
+  const count = data.length;
+  const sum = data.reduce((acc, c) => acc + (Number(c.rating) || 0), 0);
+  const avg = count > 0 ? sum / count : 0;
+
+  // Sterne anzeigen
+  const fullStars = Math.floor(avg);
+  const partial = avg - fullStars;
+  const maxStars = 5;
+
+  let starsHtml = '<span class="stars">';
+  for (let i = 1; i <= maxStars; i++) {
+    if (i <= fullStars) {
+      starsHtml += '★';
+    } else if (i === fullStars + 1 && partial > 0) {
+      starsHtml += '<span style="position: relative; display: inline-block; width: 1em;">' +
+                     '<span style="color: #FFD700; position: absolute; width: ' + (partial * 100) + '%; overflow: hidden;">★</span>' +
+                     '<span class="star-empty">★</span>' +
+                   '</span>';
+    } else {
+      starsHtml += '<span class="star-empty">★</span>';
+    }
+  }
+  starsHtml += '</span>';
+
+  averageStars.innerHTML = starsHtml;
+  reviewCount.textContent = `(${count} Rezension${count === 1 ? '' : 'en'})`;
+
+  // Rezensionen auflisten
+  commentsList.innerHTML = "";
+  data.forEach(c => {
+    const full = Number(c.rating) || 0;
+    let singleStars = '<span class="stars">';
+    for (let i = 1; i <= 5; i++) {
+      singleStars += i <= full ? '★' : '<span class="star-empty">★</span>';
+    }
+    singleStars += '</span>';
+
+    commentsList.innerHTML += `
+      <p>
+        ${singleStars} – ${c.text}<br>
+        <em>von ${c.profile || 'Unbekannt'} am ${new Date(c.created_at).toLocaleString()}</em>
+      </p>
+    `;
+  });
+}
+
+  const map = L.map('map').setView([52.52, 13.405], 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap'
+  }).addTo(map);
+
+  async function loadLocations() {
+    const { data, error } = await client.from('locations').select('*');
+    if (error) {
+      console.error(error.message);
+      return;
+    }
+
+    const bounds = L.latLngBounds();
+
+    data.forEach(loc => {
+      if (loc.lat && loc.lng) {
+        const marker = L.marker([loc.lat, loc.lng]).addTo(map)
+         .on('click', () => {
+           selectedLocation = loc;
+           locationName.textContent = loc.name;
+           locationDescription.innerHTML = `
+             ${loc.open ? '<span ;">geöffnet</span>' : '<span style="color:red;">geschlossen</span>'}
+             <br><br>
+             ${loc.description || 'Keine Beschreibung vorhanden.'}
+          `;
+          commentSection.style.display = 'block';
+          document.getElementById('sidebar').style.display = 'block'; // 👈 Sidebar anzeigen
+          document.getElementById('content').classList.remove('full-width');
+          document.getElementById('content').classList.add('reduced-width');
+          loadComments(loc.id);
+        });
+        bounds.extend([loc.lat, loc.lng]);
+      }
+    });
+
+    if (bounds.isValid()) map.fitBounds(bounds);
+  }
+
+  window.onload = () => {
+    loadLocations();
+    document.getElementById('sidebar').style.display = 'none';
+    document.getElementById('content').classList.add('full-width');
+  };
+
+  // Interaktives Sterne-Rating
+const stars = document.querySelectorAll('#starRating span');
+const ratingInput = document.getElementById('rating');
+
+stars.forEach(star => {
+  star.addEventListener('mouseenter', () => {
+    const val = parseInt(star.dataset.value);
+    highlightStars(val);
+  });
+
+  star.addEventListener('mouseleave', () => {
+    highlightStars(parseInt(ratingInput.value) || 0);
+  });
+
+  star.addEventListener('click', () => {
+    ratingInput.value = star.dataset.value;
+    highlightStars(parseInt(star.dataset.value));
+  });
+});
+
+function highlightStars(value) {
+  stars.forEach(star => {
+    const starVal = parseInt(star.dataset.value);
+    star.classList.toggle('hovered', starVal <= value);
+    star.classList.toggle('selected', starVal <= value);
+  });
+}
+
+</script>
+</body>
+</html>
